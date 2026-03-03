@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKO Food Map - 將軍澳美食地圖</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Setup Page (First Visit) -->
+    <div id="setup-page" class="page active">
+        <div class="setup-container">
+            <div class="setup-logo">
+                <i class="fas fa-utensils"></i>
+                <h1>TKO Food Map</h1>
+                <p>將軍澳美食評分地圖</p>
+            </div>
+            
+            <div class="setup-content">
+                <h2>歡迎！誰在評分？</h2>
+                <p class="setup-subtitle">Welcome! Who's reviewing today?</p>
+                
+                <div class="reviewer-input-section">
+                    <div class="input-group">
+                        <label for="new-reviewer-name">
+                            <i class="fas fa-user"></i>
+                            輸入你的名字 / Enter your name
+                        </label>
+                        <input type="text" id="new-reviewer-name" placeholder="例如：小明">
+                    </div>
+                    
+                    <button id="create-reviewer-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        創建新用戶 / Create New
+                    </button>
+                </div>
+                
+                <div class="existing-reviewers-section" id="existing-reviewers-section">
+                    <div class="divider">
+                        <span>或選擇現有用戶 / Or select existing</span>
+                    </div>
+                    
+                    <div class="reviewers-grid" id="reviewers-grid">
+                        <!-- Reviewer cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Page -->
+    <div id="main-page" class="page">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <i class="fas fa-utensils logo-icon"></i>
+                <div class="header-title">
+                    <h1>TKO Food Map</h1>
+                    <span class="subtitle">將軍澳美食地圖</span>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="搜尋餐廳...">
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="current-reviewer" id="current-reviewer-display">
+                    <span class="reviewer-label">評分者:</span>
+                    <span class="reviewer-name" id="current-reviewer-name">-</span>
+                    <button id="switch-reviewer-btn" class="btn-icon" title="切換用戶">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                </div>
+                <button id="settings-btn" class="btn-icon" title="設定">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Map Container -->
+            <div class="map-container" id="map-container">
+                <div id="map"></div>
+            </div>
+
+            <!-- Restaurant List Panel -->
+            <div class="restaurant-panel">
+                <div class="panel-header">
+                    <h2>餐廳列表</h2>
+                    <button id="add-restaurant-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        新增餐廳
+                    </button>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-group">
+                        <select id="cuisine-filter">
+                            <option value="">全部菜系</option>
+                            <option value="中式">中式</option>
+                            <option value="日式">日式</option>
+                            <option value="韓式">韓式</option>
+                            <option value="西式">西式</option>
+                            <option value="東南亞">東南亞</option>
+                            <option value="快餐">快餐</option>
+                            <option value="咖啡廳">咖啡廳</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <select id="rating-filter">
+                            <option value="">全部評分</option>
+                            <option value="8">8 分以上</option>
+                            <option value="7">7 分以上</option>
+                            <option value="6">6 分以上</option>
+                            <option value="5">5 分以上</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="restaurant-list" id="restaurant-list">
+                    <!-- Restaurant cards will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Button -->
+        <button id="fab-add-review" class="fab" title="新增評論">
+            <i class="fas fa-pen"></i>
+        </button>
+    </div>
+
+    <!-- Modal: Add/Edit Restaurant -->
+    <div id="restaurant-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="restaurant-modal-title">新增餐廳</h3>
+                <button class="modal-close" data-modal="restaurant-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="restaurant-form">
+                    <input type="hidden" id="restaurant-id">
+                    
+                    <div class="form-group">
+                        <label for="restaurant-name">餐廳名稱</label>
+                        <input type="text" id="restaurant-name" required placeholder="輸入餐廳名稱">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="restaurant-cuisine">菜系</label>
+                        <select id="restaurant-cuisine" required>
+                            <option value="">選擇菜系</option>
+                            <option value="中式">中式</option>
+                            <option value="日式">日式</option>
+                            <option value="韓式">韓式</option>
+                            <option value="西式">西式</option>
+                            <option value="東南亞">東南亞</option>
+                            <option value="快餐">快餐</option>
+                            <option value="咖啡廳">咖啡廳</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="restaurant-address">地址</label>
+                        <textarea id="restaurant-address" rows="2" placeholder="輸入地址"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>地圖位置</label>
+                        <div class="location-picker">
+                            <button type="button" id="pick-location-btn" class="btn btn-secondary">
+                                <i class="fas fa-map-marker-alt"></i>
+                                從地圖選擇
+                            </button>
+                            <span id="location-status">未選擇位置</span>
+                        </div>
+                        <input type="hidden" id="restaurant-lat">
+                        <input type="hidden" id="restaurant-lng">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="restaurant-modal">取消</button>
+                <button type="button" id="save-restaurant-btn" class="btn btn-primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Review Step 1 - Basic Info -->
+    <div id="review-modal-1" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><span class="step-indicator">步驟 1/5</span> 基本資料</h3>
+                <button class="modal-close" data-modal="review-modal-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="review-form-step1">
+                    <div class="form-group">
+                        <label for="review-restaurant-name">餐廳</label>
+                        <input type="text" id="review-restaurant-name" readonly class="readonly-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="review-total-spend">
+                            <i class="fas fa-coins"></i>
+                            總消費 (HKD)
+                        </label>
+                        <div class="input-with-icon">
+                            <span class="input-prefix">$</span>
+                            <input type="number" id="review-total-spend" min="0" placeholder="0">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="review-dishes">
+                            <i class="fas fa-utensils"></i>
+                            點了什麼菜
+                        </label>
+                        <div class="dishes-input-container">
+                            <div class="dishes-tags" id="dishes-tags"></div>
+                            <div class="dishes-input-row">
+                                <input type="text" id="review-dish-input" placeholder="輸入菜式名稱，按 Enter 新增">
+                                <button type="button" id="add-dish-btn" class="btn btn-small">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="review-modal-1">取消</button>
+                <button type="button" id="review-step1-next" class="btn btn-primary">
+                    下一步 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Review Step 2 - Core Ratings -->
+    <div id="review-modal-2" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><span class="step-indicator">步驟 2/5</span> 核心評分</h3>
+                <button class="modal-close" data-modal="review-modal-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="rating-group">
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">😋</span>
+                            <span class="rating-name">好味</span>
+                            <span class="rating-subtitle">Taste</span>
+                        </div>
+                        <div class="star-rating-10" data-category="taste">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">💵</span>
+                            <span class="rating-name">性價比</span>
+                            <span class="rating-subtitle">Value</span>
+                        </div>
+                        <div class="star-rating-10" data-category="value">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">🙋</span>
+                            <span class="rating-name">服務質素</span>
+                            <span class="rating-subtitle">Service</span>
+                        </div>
+                        <div class="star-rating-10" data-category="service">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">🏠</span>
+                            <span class="rating-name">環境</span>
+                            <span class="rating-subtitle">Environment</span>
+                        </div>
+                        <div class="star-rating-10" data-category="environment">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="review-modal-2">
+                    <i class="fas fa-arrow-left"></i> 上一步
+                </button>
+                <button type="button" id="review-step2-next" class="btn btn-primary">
+                    下一步 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Review Step 3 - Experience Ratings -->
+    <div id="review-modal-3" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><span class="step-indicator">步驟 3/5</span> 體驗評分</h3>
+                <button class="modal-close" data-modal="review-modal-3">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="rating-group">
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">🎨</span>
+                            <span class="rating-name">擺盤</span>
+                            <span class="rating-subtitle">Presentation</span>
+                        </div>
+                        <div class="star-rating-10" data-category="presentation">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">🎯</span>
+                            <span class="rating-name">符合預期</span>
+                            <span class="rating-subtitle">Expectations</span>
+                        </div>
+                        <div class="star-rating-10" data-category="expectations">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="rating-item">
+                        <div class="rating-label">
+                            <span class="rating-icon">🔄</span>
+                            <span class="rating-name">想翻兜率</span>
+                            <span class="rating-subtitle">Return Rate</span>
+                        </div>
+                        <div class="star-rating-10" data-category="returnRate">
+                            <div class="stars-container">
+                                <input type="range" min="0" max="10" step="0.5" value="5" class="rating-slider">
+                                <div class="star-display">
+                                    <span class="star-value">5.0</span>
+                                    <span class="star-icons">☆☆☆☆☆☆☆☆☆☆</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="review-modal-3">
+                    <i class="fas fa-arrow-left"></i> 上一步
+                </button>
+                <button type="button" id="review-step3-next" class="btn btn-primary">
+                    下一步 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Review Step 4 - Quick Opinions -->
+    <div id="review-modal-4" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><span class="step-indicator">步驟 4/5</span> 快速意見</h3>
+                <button class="modal-close" data-modal="review-modal-4">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="opinion-group">
+                    <div class="opinion-item">
+                        <div class="opinion-label">
+                            <span class="opinion-icon">🥘</span>
+                            <span class="opinion-name">份量</span>
+                            <span class="opinion-subtitle">Portion Size</span>
+                        </div>
+                        <div class="opinion-options" data-category="portion">
+                            <button type="button" class="opinion-btn" data-value="多">
+                                <span class="opinion-emoji">📚</span>
+                                <span class="opinion-text">多</span>
+                            </button>
+                            <button type="button" class="opinion-btn active" data-value="足夠">
+                                <span class="opinion-emoji">✓</span>
+                                <span class="opinion-text">足夠</span>
+                            </button>
+                            <button type="button" class="opinion-btn" data-value="少">
+                                <span class="opinion-emoji">📄</span>
+                                <span class="opinion-text">少</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="opinion-item">
+                        <div class="opinion-label">
+                            <span class="opinion-icon">⚡</span>
+                            <span class="opinion-name">傳菜速度</span>
+                            <span class="opinion-subtitle">Serving Speed</span>
+                        </div>
+                        <div class="opinion-options" data-category="speed">
+                            <button type="button" class="opinion-btn" data-value="快">
+                                <span class="opinion-emoji">🚀</span>
+                                <span class="opinion-text">快</span>
+                            </button>
+                            <button type="button" class="opinion-btn active" data-value="正常">
+                                <span class="opinion-emoji">⏱️</span>
+                                <span class="opinion-text">正常</span>
+                            </button>
+                            <button type="button" class="opinion-btn" data-value="慢">
+                                <span class="opinion-emoji">🐌</span>
+                                <span class="opinion-text">慢</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="opinion-item">
+                        <div class="opinion-label">
+                            <span class="opinion-icon">📋</span>
+                            <span class="opinion-name">選擇多寡</span>
+                            <span class="opinion-subtitle">Variety</span>
+                        </div>
+                        <div class="opinion-options" data-category="variety">
+                            <button type="button" class="opinion-btn" data-value="多">
+                                <span class="opinion-emoji">📚</span>
+                                <span class="opinion-text">多</span>
+                            </button>
+                            <button type="button" class="opinion-btn active" data-value="夠">
+                                <span class="opinion-emoji">✓</span>
+                                <span class="opinion-text">夠</span>
+                            </button>
+                            <button type="button" class="opinion-btn" data-value="少">
+                                <span class="opinion-emoji">📄</span>
+                                <span class="opinion-text">少</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="review-modal-4">
+                    <i class="fas fa-arrow-left"></i> 上一步
+                </button>
+                <button type="button" id="review-step4-next" class="btn btn-primary">
+                    下一步 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Review Step 5 - Final Comment -->
+    <div id="review-modal-5" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><span class="step-indicator">步驟 5/5</span> 補充評論</h3>
+                <button class="modal-close" data-modal="review-modal-5">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="review-form-step5">
+                    <div class="form-group">
+                        <label for="review-comment">
+                            <i class="fas fa-comment-alt"></i>
+                            補充評論 (選填)
+                        </label>
+                        <textarea id="review-comment" rows="4" placeholder="分享你的用餐體驗..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="review-reviewer">
+                            <i class="fas fa-user"></i>
+                            評分者
+                        </label>
+                        <select id="review-reviewer" class="reviewer-select">
+                            <!-- Reviewer options will be inserted here -->
+                        </select>
+                    </div>
+                    
+                    <div class="review-summary" id="review-summary">
+                        <h4>評分摘要</h4>
+                        <div class="summary-content" id="summary-content">
+                            <!-- Summary will be inserted here -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="review-modal-5">
+                    <i class="fas fa-arrow-left"></i> 上一步
+                </button>
+                <button type="button" id="submit-review-btn" class="btn btn-success">
+                    <i class="fas fa-check"></i>
+                    提交評論
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Settings / Manage Reviewers -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>設定</h3>
+                <button class="modal-close" data-modal="settings-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>管理評分者</h4>
+                    <div class="reviewers-list" id="settings-reviewers-list">
+                        <!-- Reviewers list will be inserted here -->
+                    </div>
+                    <button id="add-reviewer-settings-btn" class="btn btn-secondary btn-full">
+                        <i class="fas fa-plus"></i>
+                        新增評分者
+                    </button>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>數據管理</h4>
+                    <div class="data-actions">
+                        <button id="export-data-btn" class="btn btn-secondary">
+                            <i class="fas fa-download"></i>
+                            匯出數據
+                        </button>
+                        <button id="import-data-btn" class="btn btn-secondary">
+                            <i class="fas fa-upload"></i>
+                            匯入數據
+                        </button>
+                        <input type="file" id="import-file" accept=".json" style="display: none;">
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>關於</h4>
+                    <p class="settings-info">TKO Food Map v1.0</p>
+                    <p class="settings-info">將軍澳美食評分地圖</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Restaurant Detail -->
+    <div id="restaurant-detail-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="detail-restaurant-name">餐廳名稱</h3>
+                <button class="modal-close" data-modal="restaurant-detail-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="restaurant-detail-header">
+                    <div class="detail-info">
+                        <span class="detail-cuisine" id="detail-cuisine"></span>
+                        <span class="detail-address" id="detail-address"></span>
+                    </div>
+                    <div class="detail-overall-rating" id="detail-overall-rating">
+                        <!-- Overall rating will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="detail-stats" id="detail-stats">
+                    <!-- Stats will be inserted here -->
+                </div>
+                
+                <div class="reviews-section">
+                    <h4>所有評論</h4>
+                    <div class="reviews-list" id="reviews-list">
+                        <!-- Reviews will be inserted here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal="restaurant-detail-modal">關閉</button>
+                <button type="button" id="add-review-from-detail-btn" class="btn btn-primary">
+                    <i class="fas fa-pen"></i>
+                    新增評論
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span class="toast-message"></span>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="config/supabase-config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/reviewers.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/review-modal.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
