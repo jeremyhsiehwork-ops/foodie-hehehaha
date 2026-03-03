@@ -28,6 +28,13 @@ const App = {
         // Setup event handlers
         this.setupEventHandlers();
         
+        // Fix map size after everything is loaded
+        // This is critical for mobile devices where the map container
+        // might not have correct dimensions at initialization
+        setTimeout(() => {
+            MapManager.invalidateSize();
+        }, 200);
+        
         console.log('TKO Food Map initialized!');
     },
     
@@ -227,6 +234,12 @@ const App = {
                 e.preventDefault();
                 this.saveRestaurant();
             }
+        });
+        
+        // Refresh map button
+        document.getElementById('refresh-map-btn')?.addEventListener('click', () => {
+            MapManager.invalidateSize();
+            UI.showToast('地圖已重新整理', 'success');
         });
     },
     

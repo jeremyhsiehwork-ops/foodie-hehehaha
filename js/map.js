@@ -12,7 +12,10 @@ const MapManager = {
         // Tseung Kwan O MTR station coordinates
         const tkoStation = [22.3077, 114.2615];
         
-        this.map = L.map('map').setView(tkoStation, 15);
+        this.map = L.map('map', {
+            center: tkoStation,
+            zoom: 15
+        });
         
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -27,7 +30,55 @@ const MapManager = {
             }
         });
         
+        // Fix map rendering issues on resize/orientation change
+        // This is critical for mobile devices
+        this.setupResizeHandler();
+        
+        // Initial invalidate after a short delay to ensure container is properly sized
+        setTimeout(() => {
+            this.invalidateSize();
+        }, 100);
+        
         return this.map;
+    },
+    
+    // Setup resize handler to fix map rendering
+    setupResizeHandler() {
+        // Debounce function
+        let resizeTimeout;
+        const debouncedInvalidate = () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.invalidateSize();
+            }, 150);
+        };
+        
+        // Listen for window resize
+        window.addEventListener('resize', debouncedInvalidate);
+        
+        // Listen for orientation change (important for mobile)
+        window.addEventListener('orientationchange', () => {
+            // Need longer delay for orientation change
+            setTimeout(() => {
+                this.invalidateSize();
+            }, 300);
+        });
+        
+        // Also invalidate when visibility changes (e.g., when app loads)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                setTimeout(() => {
+                    this.invalidateSize();
+                }, 100);
+            }
+        });
+    },
+    
+    // Invalidate map size - fixes rendering issues
+    invalidateSize() {
+        if (this.map) {
+            this.map.invalidateSize(true);
+        }
     },
     
     // Add restaurant marker
